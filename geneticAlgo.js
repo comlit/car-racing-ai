@@ -39,7 +39,7 @@ function normalizeFitness(cars) {
 		//console.log(item.fitness)
     })
 
-	debugtext.setText(generation + '\n' + sum/cars.length)
+	debugtext.setText('Generation: ' + generation + '\n' + 'Average score: ' + sum/cars.length)
 }
 
 // An algorithm for picking one bird from an array

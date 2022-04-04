@@ -62,8 +62,10 @@ function create() {
     keyS = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
     keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
 
-    var style = { font: "65px Arial", fill: "#000000", align: "center" };
-    debugtext = this.add.text(100, 100, 'Hello World', style);
+    var style = { font: "20px Arial", fill: "#000000", align: "center" };
+    debugtext = this.add.text(100, 100, 'Generation: 0 \n Average score: 0', style);
+    debugtext.x = 600;
+    debugtext.y = 50;
 
     //this.physics.world.setFPS(4)
 
