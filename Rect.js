@@ -15,6 +15,7 @@ class Rect extends Phaser.GameObjects.Image {
         this.divide();
         this.point = new Phaser.Geom.Point(this.x, this.y);
         this.rectt = this.getBounds();
+        this.setVisible(false)
     }
 
     hasred()

@@ -18,19 +18,28 @@ function generate(oldCars) {
 		let car = poolSelection(oldCars);
 		newCars[i] = car;
 	}
+	var max = oldCars[0];
+	oldCars.forEach(function(item) {
+		if(item.fitness > max.fitness)
+			max = item 
+	})
+	//newCars[0] = max.copy();
 	return newCars;
 }
 
 function normalizeFitness(cars) {
-    let sum = 0;
+	let sum = 0;
     cars.forEach(function(item) {
         item.score = Math.pow(item.score, 2)
         sum += item.score
+		//console.log(item.score)
     });
-
     cars.forEach(function(item){
-        item.fitness = item.fitness/sum
+        item.fitness = item.score/sum
+		//console.log(item.fitness)
     })
+
+	debugtext.setText(generation + '\n' + sum/cars.length)
 }
 
 // An algorithm for picking one bird from an array
@@ -53,6 +62,10 @@ function poolSelection(cars) {
 
 	// Go back one
 	i--
+	if(i < 0)
+		i++
+
+	//console.log(i)	
 
 	// Make sure it's a copy!
 	// (this includes mutation)
