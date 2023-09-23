@@ -1,13 +1,17 @@
 var config = {
     type: Phaser.AUTO,
     parent: 'phaser-ai',
-    width: 1280,
-    height: 720,
+    width: 1920,
+    height: 1080,
     physics: {
         default: 'arcade',
         arcade: {
             gravity: { y: 0 }
         }
+    },
+    scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH
     },
     dom: {
         createContainer: true
@@ -32,8 +36,19 @@ var texture;
 var rects;
 var line;
 var debugtext
+var scanner;
+var outer;
+var inner;
+var trackbounds = {};
 
-const totalPopulation = 100;
+
+var innerscan;
+var outerscan;
+var outerstart;
+var innerstart;
+var scanned = false;
+
+const totalPopulation = 50;
 
 let aliveCars = [];
 let generation = 1;
@@ -51,11 +66,11 @@ function preload() {
 }
 
 function create() {
-    this.physics.world.setBounds(0, 0, 1280, 720);
-    //this.add.image(640, 360, 'backdrop').setScale(0.8);
-    texture = this.textures.createCanvas('back', 1280, 720);
-    texture.draw(0, 0, this.textures.get('track3').getSourceImage())
-    this.add.image(0, 0, 'back').setOrigin(0);
+    this.physics.world.setBounds(0, 0, 1920, 1080);
+
+    this.add.image(0, 0, 'track3').setOrigin(0).setScale(1.5);
+
+    this.graphics = this.add.graphics({ lineStyle: { width: 2, color: 0x00ff00 }, fillStyle: { color: 0xff0000 } });
 
     keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
     keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
@@ -64,80 +79,136 @@ function create() {
 
     var style = { font: "20px Arial", fill: "#000000", align: "center" };
     debugtext = this.add.text(100, 100, 'Generation: 0 \n Average score: 0', style);
-    debugtext.x = 600;
+    debugtext.x = 800;
     debugtext.y = 50;
 
-    //this.physics.world.setFPS(4)
-
-    //car = new Car(this,600,630)
-
-    dectBounds(this)
-
     for (let i = 0; i < totalPopulation; i++) {
-        let car = new Car(this, 600, 630, rects);
+        let car = new Car(this, 800, 890);
         aliveCars[i] = car;
         cars[i] = car;
     }
-
-    //line = new Dect(this, 10, 10)
 }
 
-function dectBounds(scene) {
-    rects = new Array()
-    for (let i = 20; i < 1280; i += 40) {
-        for (let n = 20; n < 720; n += 40) {
-            var r = new Rect(scene, i, n, texture, 1.0)
-            rects.push(r);
-            rects = rects.concat(r.getChildrenRects())
+function dectBounds(scene, startx, starty) {
+    scanner = new Rect(scene, startx, starty, 0.5)
 
-            //console.log(r.arrr.length)
-        }
+    while (!scanner.finished) {
+        scanner.scan()
     }
-    console.log(rects.length)
-    rects.forEach(function (item) {
-        if (!item.vis)
-            item.destroy();
-    });
-    rects = rects.filter(function (item) {
-        return item.vis;
-    })
-}
+    return scanner.pathp
 
-function carWallOverlap(spriteA, spriteB) {
-    return Phaser.Geom.Rectangle.ContainsPoint(spriteA, spriteB.point);
-}
-
-function dectWallOverlap(spriteA) {
-    var line = spriteA.getLine();
-    var overlap = [];
-    for (item of rects)
-        if (Phaser.Geom.Intersects.LineToRectangle(line, item.rectt))
-            overlap.push(item)
-    return overlap
 }
 
 function destroyCar(pCar) {
-    pCar.dectFront.destroy()
-    pCar.dectLeft.destroy()
-    pCar.dectRight.destroy()
     pCar.destroy()
 }
 
+function findstart(scene, startx, starty) {
+    let x, y;
+    for (let i = startx; i < 1920; i += 1) {
+        for (let n = starty; n < 1080; n += 1) {
+            if (i % 2 == 0 && n % 2 == 0)
+                if (scene.textures.getPixel(i / 1.5, n / 1.5, 'track3').r != 255) {
+                    x = i
+                    y = n
+                    break;
+                }
+        }
+        if (x != undefined)
+            break;
+    }
+    return { x: x, y: y }
+}
+
+function createPolys() {
+    let points = []
+    for (let i = 0; i < outer.length - 1; i++) {
+        points.push(new Phaser.Geom.Point(outer[i].x, outer[i].y))
+    }
+    trackbounds["outer"] = new Phaser.Geom.Polygon(points)
+    points = []
+    for (let i = 0; i < inner.length - 1; i++) {
+        points.push(new Phaser.Geom.Point(inner[i].x, inner[i].y))
+    }
+    trackbounds["inner"] = new Phaser.Geom.Polygon(points)
+}
+
 function update() {
-    cars.forEach(elem => elem.pdate())
-    for (let i = aliveCars.length - 1; i >= 0; i--) {
-        let car = aliveCars[i];
-        car.chooseAction();
-        if (car.dead) {
-            aliveCars.splice(i, 1);
+    if (!scanned) {
+        if (!outerstart || !innerstart || !innerscan || !outerscan) {
+            outerstart = findstart(this, 0, 0)
+            innerstart = findstart(this, 1000, 500)
+            innerscan = new Rect(this, innerstart.x, innerstart.y, 0.5)
+            outerscan = new Rect(this, outerstart.x, outerstart.y, 0.5)
+        }
+        if (!outerscan.finished)
+            outerscan.scan()
+        if (!innerscan.finished)
+            innerscan.scan()
+
+        if (outerscan.finished && innerscan.finished) {
+            outer = outerscan.pathp
+            inner = innerscan.pathp
+            scanned = true
+            createPolys()
+
+            outerscan.points.forEach(elem => elem.destroy())
+            innerscan.points.forEach(elem => elem.destroy())
+
+            outerscan.destroy()
+            innerscan.destroy()
         }
 
     }
-    if (aliveCars.length == 0) {
-        generation++;
-        createNextGeneration();
+
+    if (scanned) {
+
+        for (let car of cars) {
+            let front = { x: car.x + Math.cos(car.toRadians(car.angle)) * 400, y: car.y + Math.sin(car.toRadians(car.angle)) * 400 }
+            let left = { x: car.x + Math.cos(car.toRadians(car.angle - 45)) * 400, y: car.y + Math.sin(car.toRadians(car.angle - 45)) * 400 }
+            let right = { x: car.x + Math.cos(car.toRadians(car.angle + 45)) * 400, y: car.y + Math.sin(car.toRadians(car.angle + 45)) * 400 }
+
+            let fline = new Phaser.Geom.Line(car.x, car.y, front.x, front.y)
+            let lline = new Phaser.Geom.Line(car.x, car.y, left.x, left.y)
+            let rline = new Phaser.Geom.Line(car.x, car.y, right.x, right.y)
+
+            let finter = Phaser.Geom.Intersects.GetLineToPolygon(fline, [trackbounds["outer"], trackbounds["inner"]])
+            let linter = Phaser.Geom.Intersects.GetLineToPolygon(lline, [trackbounds["outer"], trackbounds["inner"]])
+            let rinter = Phaser.Geom.Intersects.GetLineToPolygon(rline, [trackbounds["outer"], trackbounds["inner"]])
+
+            let dist = { l: 400, r: 400, f: 400 }
+
+            if (linter)
+                dist.l = Math.sqrt(Math.pow(linter.x - car.x, 2) + Math.pow(linter.y - car.y, 2))
+            if (rinter)
+                dist.r = Math.sqrt(Math.pow(rinter.x - car.x, 2) + Math.pow(rinter.y - car.y, 2))
+            if (finter)
+                dist.f = Math.sqrt(Math.pow(finter.x - car.x, 2) + Math.pow(finter.y - car.y, 2))
+
+            if (dist.f < 20 || dist.r < 20 || dist.l < 20)
+                car.dead = true
+
+            //let dist = {l: Math.random() * 400, r: Math.random() * 400, f: Math.random() * 400}
+
+            car.pdate(dist.f, dist.r, dist.l, false)
+        }
+
+
+        for (let i = aliveCars.length - 1; i >= 0; i--) {
+            let car = aliveCars[i];
+            car.chooseAction();
+            if (car.dead) {
+                aliveCars.splice(i, 1);
+            }
+
+        }
+        if (aliveCars.length == 0) {
+            console.log("Generation: " + generation + " complete");
+            generation++;
+            createNextGeneration();
+        }
+        aliveCars.forEach(elem => elem.forward())
     }
-    aliveCars.forEach(elem => elem.forward())
 }
 
 function testUpdate() {

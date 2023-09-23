@@ -6,7 +6,7 @@ class Dect extends Phaser.GameObjects.Image {
         this.setTexture('line')
         this.setOrigin(0,0.5)
         this.scaleX = 30
-        this.setVisible(false);
+        this.setVisible(true);
         this.last = 0;
         this.length = this.scaleX/40
     }
